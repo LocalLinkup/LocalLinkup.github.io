@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalLinkup - Local Service Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchPanel('customer')">
+                <div class="bg-white text-indigo-600 p-2 rounded-xl shadow-inner font-black text-xl">
+                    <i class="fa-solid fa-link"></i>
+                </div>
+                <span class="text-2xl font-black tracking-wide">Local<span class="text-indigo-200">Linkup</span></span>
+            </div>
+            <nav class="flex flex-wrap justify-center gap-2 font-medium text-sm">
+                <button onclick="switchPanel('customer')" id="nav-customer" class="px-4 py-2 rounded-xl bg-indigo-700 transition shadow-sm flex items-center gap-2"><i class="fa-solid fa-compass"></i> Find Services</button>
+                <button onclick="switchPanel('provider')" id="nav-provider" class="px-4 py-2 rounded-xl hover:bg-indigo-700 transition flex items-center gap-2"><i class="fa-solid fa-store"></i> Provider Portal</button>
+                <button onclick="switchPanel('admin')" id="nav-admin" class="px-4 py-2 rounded-xl hover:bg-indigo-700 transition flex items-center gap-2"><i class="fa-solid fa-shield-halved"></i> Admin</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+
+        <!-- ================= PANEL 1: CUSTOMER PANEL ================= -->
+        <section id="panel-customer" class="space-y-6 sm:space-y-8">
+            <div id="customerAuthBar" class="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 font-medium block">Customer Account</span>
+                        <span id="customerStatusText" class="font-bold text-slate-700 text-sm">Guest User</span>
+                    </div>
+                </div>
+                <button onclick="openCustomerAuthModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-xs">Login / Register</button>
+            </div>
+
+            <!-- Clean Live Search & GPS Bar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-3">
+                <div class="flex-1 flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <i class="fa-solid fa-magnifying-glass text-indigo-600"></i>
+                    <input type="text" id="customerSearchInput" oninput="filterCustomerServices()" placeholder="Search service (e.g. Iron Gate, Wiring)..." class="w-full bg-transparent focus:outline-none text-sm font-medium">
+                </div>
+                <div class="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 justify-between sm:justify-start">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-location-crosshairs text-indigo-600 animate-pulse"></i>
+                        <span id="customerLocationText" class="text-xs font-bold text-slate-600 whitespace-nowrap">GPS Active</span>
+                    </div>
+                    <button onclick="detectCustomerGPS()" class="text-[11px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg font-bold transition">Refresh</button>
+                </div>
+            </div>
+
+            <!-- Services Grid -->
+            <div>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg sm:text-xl font-black text-slate-800">Nearby Services (Closest First)</h2>
+                    <span id="serviceCount" class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full font-bold border border-indigo-100">0 Found</span>
+                </div>
+                <div id="customerServiceList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+        </section>
+
+        <!-- ================= PROVIDER FULL PROFILE VIEW MODAL ================= -->
+        <div id="providerProfileModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div class="bg-white p-6 sm:p-8 rounded-3xl max-w-xl w-full space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                <button onclick="closeProviderProfileModal()" class="absolute right-6 top-6 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+                <div id="providerProfileContent" class="space-y-6"></div>
+            </div>
+        </div>
+
+        <!-- ================= PANEL 2: PROVIDER PANEL ================= -->
+        <section id="panel-provider" class="hidden max-w-3xl mx-auto space-y-8">
+            <div id="providerAuthCard" class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-800">Service Provider Portal</h2>
+                    <p class="text-xs text-slate-400">Apne mobile number aur password se login karein.</p>
+                </div>
+
+                <div class="flex bg-slate-100 p-1 rounded-2xl">
+                    <button onclick="switchProviderTab('login')" id="pTabLogin" class="flex-1 py-2.5 font-bold text-indigo-600 bg-white rounded-xl text-sm shadow-xs transition">Login</button>
+                    <button onclick="switchProviderTab('signup')" id="pTabSignup" class="flex-1 py-2.5 font-medium text-slate-500 rounded-xl text-sm transition">Register / Signup</button>
+                </div>
+
+                <form id="providerLoginForm" onsubmit="handleProviderLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600">Mobile Number</label>
+                        <input type="tel" id="plLoginMobile" required placeholder="e.g. 9876543210" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600">Password</label>
+                        <input type="password" id="plLoginPass" required placeholder="********" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-md text-sm">Login to Dashboard</button>
+                </form>
+
+                <form id="providerSignupForm" onsubmit="handleProviderSignup(event)" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600">Provider / Shop Name</label>
+                        <input type="text" id="psName" required placeholder="e.g. Sharma Welding Works" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600">Mobile Number</label>
+                            <input type="tel" id="psMobile" required placeholder="e.g. 9876543210" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600">Password</label>
+                            <input type="password" id="psPass" required placeholder="Create password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600">Shop GPS Location</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="psLocation" readonly required placeholder="Click GPS button" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600">
+                            <button type="button" onclick="detectProviderGPS()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl text-xs font-bold transition whitespace-nowrap"><i class="fa-solid fa-location-crosshairs"></i> GPS</button>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold transition shadow-md text-sm">Register Account</button>
+                </form>
+            </div>
+
+            <!-- Provider Dashboard -->
+            <div id="providerDashboard" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-store"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 font-bold block">Welcome Provider</span>
+                            <h3 id="provDashName" class="text-lg font-black text-slate-800">Shop Name</h3>
+                        </div>
+                    </div>
+                    <button onclick="providerLogout()" class="w-full sm:w-auto bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition">Logout</button>
+                </div>
+
+                <!-- Shop Profile & Timings -->
+                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-address-card text-indigo-600"></i> Shop Profile & Timings</h3>
+                        <button id="editProfileBtn" onclick="toggleShopEditMode()" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition"><i class="fa-solid fa-pen"></i> Edit Profile</button>
+                    </div>
+
+                    <div id="shopProfileViewCard" class="hidden bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-sm">
+                        <p><strong>Address:</strong> <span id="viewShopAddress" class="text-slate-600"></span></p>
+                        <p><strong>Timings:</strong> <span id="viewShopTiming" class="text-slate-600"></span></p>
+                        <p><strong>Google Map Link:</strong> <a id="viewShopMap" href="#" target="_blank" class="text-indigo-600 underline truncate block"></a></p>
+                    </div>
+
+                    <form id="shopProfileForm" onsubmit="handleUpdateShopProfile(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold mb-1.5 text-slate-600">Shop Address</label>
+                                <input type="text" id="shopAddress" required placeholder="e.g. Main Market, Lengeri" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold mb-1.5 text-slate-600">Shop Timings</label>
+                                <input type="text" id="shopTiming" required placeholder="e.g. 9:00 AM - 8:00 PM" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600">Google Map Link</label>
+                            <input type="url" id="shopMapLink" placeholder="https://maps.app.goo.gl/..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-md text-sm">Save Profile</button>
+                    </form>
+                </div>
+
+                <!-- Add Service -->
+                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                    <h3 class="text-lg font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-circle-plus text-indigo-600"></i> Add New Service (Unlimited Photos)</h3>
+                    <form id="addServiceForm" onsubmit="handleAddService(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold mb-1.5 text-slate-600">Service Title</label>
+                                <input type="text" id="sTitle" required placeholder="e.g. Iron Gate Fabrication" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold mb-1.5 text-slate-600">Price</label>
+                                <input type="text" id="sPrice" required placeholder="e.g. ₹500 or Negotiable" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600">Description</label>
+                            <textarea id="sDesc" rows="2" required placeholder="Describe your service..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1.5 text-slate-600">Upload Photos (Select unlimited photos)</label>
+                            <input type="file" id="sPhotos" accept="image/*" multiple required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700">
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-md text-sm">Publish Service</button>
+                    </form>
+                </div>
+
+                <!-- My Services -->
+                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                    <h3 class="text-lg font-black text-slate-800">My Uploaded Services</h3>
+                    <div id="myServicesList" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PANEL 3: ADMIN PANEL ================= -->
+        <section id="panel-admin" class="hidden max-w-5xl mx-auto space-y-8">
+            <div id="adminLoginCard" class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 max-w-md mx-auto space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-800">Admin Security Login</h2>
+                    <p class="text-xs text-slate-400">Enter master password to access control panel.</p>
+                </div>
+                <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                    <div class="relative">
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600">Admin Password</label>
+                        <input type="password" id="adminPassInput" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm pr-12">
+                        <button type="button" onclick="toggleAdminPassword()" class="absolute right-4 top-9 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-eye" id="eyeIcon"></i></button>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-md text-sm">Login Admin</button>
+                </form>
+            </div>
+
+            <div id="adminDashboard" class="hidden bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-black text-slate-800">Admin Master Dashboard</h2>
+                        <p class="text-xs text-slate-400">Manage all registered providers, credentials, and services.</p>
+                    </div>
+                    <button onclick="adminLogout()" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition">Logout</button>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-3 max-w-md">
+                    <h3 class="font-bold text-slate-700 text-sm">Change Admin Password</h3>
+                    <form onsubmit="handleAdminChangePassword(event)" class="space-y-3">
+                        <input type="password" id="newAdminPass" required placeholder="Enter new password" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Update Password</button>
+                    </form>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="font-bold text-slate-700 text-base">All Registered Providers (Mobile & Credentials)</h3>
+   <!-- ================= PANEL 3: ADMIN PANEL ================= -->
+        <section id="panel-admin" class="hidden max-w-5xl mx-auto space-y-8">
+            <div id="adminLoginCard" class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 max-w-md mx-auto space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-800">Admin Security Login</h2>
+                    <p class="text-xs text-slate-400">Enter master password to access control panel.</p>
+                </div>
+                <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                    <div class="relative">
+                        <label class="block text-xs font-bold mb-1.5 text-slate-600">Admin Password</label>
+                        <input type="password" id="adminPassInput" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm pr-12">
+                        <button type="button" onclick="toggleAdminPassword()" class="absolute right-4 top-9 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-eye" id="eyeIcon"></i></button>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-md text-sm">Login Admin</button>
+                </form>
+            </div>
+
+            <div id="adminDashboard" class="hidden bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-black text-slate-800">Admin Master Dashboard</h2>
+                        <p class="text-xs text-slate-400">Manage all registered providers, credentials, and services.</p>
+                    </div>
+                    <button onclick="adminLogout()" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition">Logout</button>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-3 max-w-md">
+                    <h3 class="font-bold text-slate-700 text-sm">Change Admin Password</h3>
+                    <form onsubmit="handleAdminChangePassword(event)" class="space-y-3">
+                        <input type="password" id="newAdminPass" required placeholder="Enter new password" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Update Password</button>
+                    </form>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="font-bold text-slate-700 text-base">All Registered Providers (Mobile & Credentials)</h3>
+                    <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-600 text-xs uppercase font-bold tracking-wider">
+                                    <th class="p-4">Shop Name</th>
+                                    <th class="p-4">Mobile</th>
+                                    <th class="p-4">Password</th>
+                                    <th class="p-4">Address & Timing</th>
+                                    <th class="p-4 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminProvidersTableBody" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Customer Auth Modal -->
+    <div id="customerAuthModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 sm:p-8 rounded-3xl max-w-md w-full space-y-6 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-black text-xl text-slate-800">Customer Account</h3>
+                <button onclick="closeCustomerAuthModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex bg-slate-100 p-1 rounded-2xl">
+                <button onclick="switchCustTab('login')" id="cTabLogin" class="flex-1 py-2 font-bold text-indigo-600 bg-white rounded-xl text-sm shadow-xs transition">Login</button>
+                <button onclick="switchCustTab('signup')" id="cTabSignup" class="flex-1 py-2 font-medium text-slate-500 rounded-xl text-sm transition">Signup</button>
+            </div>
+            <form id="custLoginForm" onsubmit="handleCustomerLogin(event)" class="space-y-4">
+                <input type="tel" id="clMobile" required placeholder="Mobile Number" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                <input type="password" id="clPass" required placeholder="Password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow-md">Login</button>
+            </form>
+            <form id="custSignupForm" onsubmit="handleCustomerSignup(event)" class="space-y-4 hidden">
+                <input type="text" id="csName" required placeholder="Your Name" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                <input type="tel" id="csMobile" required placeholder="Mobile Number" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                <input type="password" id="csPass" required placeholder="Create Password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold shadow-md">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let currentUserLat = 27.2750;
+        let currentUserLon = 94.9100;
+        let loggedInProvider = JSON.parse(localStorage.getItem('locallinkup_active_provider')) || null;
+        let loggedInCustomer = JSON.parse(localStorage.getItem('locallinkup_active_customer')) || null;
+
+        if (!localStorage.getItem('locallinkup_admin_pass')) {
+            localStorage.setItem('locallinkup_admin_pass', 'DeBaJiT123#@');
+        }
+
+        if (!localStorage.getItem('locallinkup_providers')) {
+            const sampleProviders = [
+                {
+                    id: 101,
+                    name: "Sharma Welding Works",
+                    mobile: "9876543210",
+                    pass: "1234",
+                    lat: 27.2800,
+                    lon: 94.9200,
+                    address: "Main Market, Lengeri",
+                    timing: "9:00 AM - 8:00 PM",
+                    mapLink: "https://maps.google.com",
+                    services: [
+                        {
+                            id: 1,
+                            title: "Iron Main Gate Fabrication",
+                            price: "₹8,000 onwards",
+                            desc: "Heavy duty iron gate with custom design.",
+                            photos: ["https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400"]
+                        }
+                    ]
+                }
+            ];
+            localStorage.setItem('locallinkup_providers', JSON.stringify(sampleProviders));
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLon = (lon2 - lon1) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        }
+
+        function switchPanel(panelId) {
+            document.getElementById('panel-customer').classList.add('hidden');
+            document.getElementById('panel-provider').classList.add('hidden');
+            document.getElementById('panel-admin').classList.add('hidden');
+
+            document.getElementById('nav-customer').className = "px-4 py-2 rounded-xl hover:bg-indigo-700 transition flex items-center gap-2";
+            document.getElementById('nav-provider').className = "px-4 py-2 rounded-xl hover:bg-indigo-700 transition flex items-center gap-2";
+            document.getElementById('nav-admin').className = "px-4 py-2 rounded-xl hover:bg-indigo-700 transition flex items-center gap-2";
+
+            document.getElementById('panel-' + panelId).classList.remove('hidden');
+            document.getElementById('nav-' + panelId).className = "px-4 py-2 rounded-xl bg-indigo-700 transition shadow-sm flex items-center gap-2";
+
+            if (panelId === 'customer') {
+                detectCustomerGPS();
+            } else if (panelId === 'provider') {
+                checkProviderSession();
+            }
+        }
+
+        function detectCustomerGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        currentUserLat = pos.coords.latitude;
+                        currentUserLon = pos.coords.longitude;
+                        document.getElementById('customerLocationText').innerText = `GPS Active`;
+                        loadCustomerServices();
+                    },
+                    err => {
+                        document.getElementById('customerLocationText').innerText = `Lengeri Default`;
+                        loadCustomerServices();
+                    },
+                    { timeout: 10000 }
+                );
+            } else {
+                loadCustomerServices();
+            }
+        }
+
+        function loadCustomerServices() {
+            const searchQuery = document.getElementById('customerSearchInput').value.toLowerCase().trim();
+            const providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            const container = document.getElementById('customerServiceList');
+            container.innerHTML = '';
+
+            let allServices = [];
+
+            providers.forEach(prov => {
+                const dist = calculateDistance(currentUserLat, currentUserLon, prov.lat, prov.lon);
+                if (dist <= 50) {
+                    prov.services.forEach(s => {
+                        allServices.push({
+                            ...s,
+                            providerId: prov.id,
+                            providerName: prov.name,
+                            providerMobile: prov.mobile,
+                            providerAddress: prov.address || "Address not updated",
+                            providerTiming: prov.timing || "Timing not updated",
+                            providerMap: prov.mapLink || "",
+                            distance: dist
+                        });
+                    });
+                }
+            });
+
+            allServices.sort((a, b) => a.distance - b.distance);
+
+            const filtered = allServices.filter(s => 
+                s.title.toLowerCase().includes(searchQuery) || 
+                s.desc.toLowerCase().includes(searchQuery) ||
+                s.providerName.toLowerCase().includes(searchQuery)
+            );
+
+            document.getElementById('serviceCount').innerText = `${filtered.length} Found`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-16 text-slate-400 font-medium"><i class="fa-solid fa-box-open text-4xl mb-3"></i><p>No services matched your search within 50 KM.</p></div>`;
+                return;
+            }
+
+            filtered.forEach(s => {
+                let photoHtml = '';
+                if (s.photos && s.photos.length > 0) {
+                    photoHtml = `<div class="grid grid-cols-${s.photos.length > 1 ? '3' : '1'} gap-2 mt-3">`;
+                    s.photos.forEach(p => {
+                        photoHtml += `<img src="${p}" class="h-24 w-full object-cover rounded-xl border border-slate-100 shadow-xs">`;
+                    });
+                    photoHtml += `</div>`;
+                }
+
+                let mapBtn = s.providerMap ? `<a href="${s.providerMap}" target="_blank" class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl font-bold hover:bg-blue-100 transition inline-flex items-center gap-1.5"><i class="fa-solid fa-map-location-dot"></i> Google Map</a>` : '';
+
+                container.innerHTML += `
+                    <div class="bg-white p-6 rounded-3xl shadow-xs border border-slate-100 hover:shadow-md transition space-y-4 flex flex-col justify-between">
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center text-xs">
+                                <span onclick="openProviderProfile(${s.providerId})" class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-xl font-bold cursor-pointer hover:bg-indigo-100 transition"><i class="fa-solid fa-store mr-1"></i> ${s.providerName}</span>
+                                <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-xl font-black"><i class="fa-solid fa-location-arrow"></i> ${s.distance.toFixed(1)} KM</span>
+                            </div>
+                            <h3 class="text-lg font-black text-slate-800">${s.title}</h3>
+                            <p class="text-xs text-slate-500 font-medium"><i class="fa-solid fa-location-dot text-indigo-600"></i> ${s.providerAddress} &bull; <i class="fa-solid fa-clock text-indigo-600"></i> ${s.providerTiming}</p>
+                            <p class="text-sm text-slate-600 leading-relaxed">${s.desc}</p>
+                            ${photoHtml}
+                            <div>${mapBtn}</div>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                                <span class="text-[11px] text-slate-400 font-bold block">PRICE</span>
+                                <span class="font-black text-emerald-600 text-sm">${s.price}</span>
+                            </div>
+                            <a href="tel:${s.providerMobile}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs"><i class="fa-solid fa-phone"></i> ${s.providerMobile}</a>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function filterCustomerServices() { loadCustomerServices(); }
+
+        // Open Provider Profile Modal (Customer View)
+        function openProviderProfile(providerId) {
+            const providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            const prov = providers.find(p => p.id === providerId);
+            if(!prov) return;
+
+            const modalContent = document.getElementById('providerProfileContent');
+            let mapLinkHtml = prov.mapLink ? `<a href="${prov.mapLink}" target="_blank" class="text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-xl font-bold inline-flex items-center gap-2"><i class="fa-solid fa-map-location-dot"></i> View on Google Maps</a>` : '';
+
+            let servicesHtml = '';
+            if(prov.services && prov.services.length > 0) {
+                prov.services.forEach(serv => {
+                    let sPhotos = '';
+                    if(serv.photos && serv.photos.length > 0) {
+                        sPhotos = `<div class="grid grid-cols-3 gap-1 mt-2">`;
+                        serv.photos.forEach(sp => { sPhotos += `<img src="${sp}" class="h-16 w-full object-cover rounded border">`; });
+                        sPhotos += `</div>`;
+                    }
+                    servicesHtml += `
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
+                            <h4 class="font-bold text-slate-800 text-sm">${serv.title}</h4>
+                            <p class="text-xs text-emerald-600 font-bold">${serv.price}</p>
+                            <p class="text-xs text-slate-600">${serv.desc}</p>
+                            ${sPhotos}
+                        </div>
+                    `;
+                });
+            } else {
+                servicesHtml = `<p class="text-slate-400 text-xs">No services listed yet.</p>`;
+            }
+
+            modalContent.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-2xl">
+                            <i class="fa-solid fa-store"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800">${prov.name}</h2>
+                            <p class="text-xs text-slate-500 font-medium"><i class="fa-solid fa-phone text-indigo-600"></i> <a href="tel:${prov.mobile}" class="text-indigo-600 underline font-bold">${prov.mobile}</a></p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-1 font-medium text-slate-600">
+                        <p><i class="fa-solid fa-location-dot text-indigo-600 mr-1"></i> <strong>Address:</strong> ${prov.address || 'Not specified'}</p>
+                        <p><i class="fa-solid fa-clock text-indigo-600 mr-1"></i> <strong>Timings:</strong> ${prov.timing || 'Not specified'}</p>
+                        <div class="pt-2">${mapLinkHtml}</div>
+                    </div>
+                    <div class="space-y-3 pt-2">
+                        <h3 class="font-black text-slate-800 text-base">All Services by ${prov.name}</h3>
+                        <div class="space-y-3">${servicesHtml}</div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('providerProfileModal').classList.remove('hidden');
+        }
+
+        function closeProviderProfileModal() {
+            document.getElementById('providerProfileModal').classList.add('hidden');
+        }
+              // Customer Auth Modals
+        function openCustomerAuthModal() { document.getElementById('customerAuthModal').classList.remove('hidden'); }
+        function closeCustomerAuthModal() { document.getElementById('customerAuthModal').classList.add('hidden'); }
+        function switchCustTab(tab) {
+            if(tab==='login') {
+                document.getElementById('custLoginForm').classList.remove('hidden');
+                document.getElementById('custSignupForm').classList.add('hidden');
+                document.getElementById('cTabLogin').className = "flex-1 py-2 font-bold text-indigo-600 bg-white rounded-xl text-sm shadow-xs transition";
+                document.getElementById('cTabSignup').className = "flex-1 py-2 font-medium text-slate-500 rounded-xl text-sm transition";
+            } else {
+                document.getElementById('custLoginForm').classList.add('hidden');
+                document.getElementById('custSignupForm').classList.remove('hidden');
+                document.getElementById('cTabSignup').className = "flex-1 py-2 font-bold text-indigo-600 bg-white rounded-xl text-sm shadow-xs transition";
+                document.getElementById('cTabLogin').className = "flex-1 py-2 font-medium text-slate-500 rounded-xl text-sm transition";
+            }
+        }
+
+        function handleCustomerSignup(e) {
+            e.preventDefault();
+            const name = document.getElementById('csName').value;
+            const mobile = document.getElementById('csMobile').value;
+            const pass = document.getElementById('csPass').value;
+            let customers = JSON.parse(localStorage.getItem('locallinkup_customers')) || [];
+            if(customers.find(c => c.mobile === mobile)) { alert('Mobile already registered!'); return; }
+            customers.push({ name, mobile, pass });
+            localStorage.setItem('locallinkup_customers', JSON.stringify(customers));
+            alert('Registered Successfully! Please Login.');
+            switchCustTab('login');
+        }
+
+        function handleCustomerLogin(e) {
+            e.preventDefault();
+            const mobile = document.getElementById('clMobile').value;
+            const pass = document.getElementById('clPass').value;
+            let customers = JSON.parse(localStorage.getItem('locallinkup_customers')) || [];
+            const found = customers.find(c => c.mobile === mobile && c.pass === pass);
+            if(found) {
+                loggedInCustomer = found;
+                localStorage.setItem('locallinkup_active_customer', JSON.stringify(found));
+                document.getElementById('customerStatusText').innerText = `${found.name} (${found.mobile})`;
+                closeCustomerAuthModal();
+                alert('Login Successful!');
+            } else { alert('Invalid Mobile or Password!'); }
+        }
+
+        // Provider Portal
+        function switchProviderTab(tab) {
+            if(tab==='login') {
+                document.getElementById('providerLoginForm').classList.remove('hidden');
+                document.getElementById('providerSignupForm').classList.add('hidden');
+                document.getElementById('pTabLogin').className = "flex-1 py-2.5 font-bold text-indigo-600 bg-white rounded-xl text-sm shadow-xs transition";
+                document.getElementById('pTabSignup').className = "flex-1 py-2.5 font-medium text-slate-500 rounded-xl text-sm transition";
+            } else {
+                document.getElementById('providerLoginForm').classList.add('hidden');
+                document.getElementById('providerSignupForm').classList.remove('hidden');
+                document.getElementById('pTabSignup').className = "flex-1 py-2.5 font-bold text-indigo-600 bg-white rounded-xl text-sm shadow-xs transition";
+                document.getElementById('pTabLogin').className = "flex-1 py-2.5 font-medium text-slate-500 rounded-xl text-sm transition";
+            }
+        }
+
+        function detectProviderGPS() {
+            const locInput = document.getElementById('psLocation');
+            locInput.value = "Detecting GPS...";
+            if(navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => { locInput.value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`; },
+                    err => { locInput.value = "27.2750, 94.9100"; }
+                );
+            } else { locInput.value = "27.2750, 94.9100"; }
+        }
+
+        function handleProviderSignup(e) {
+            e.preventDefault();
+            const name = document.getElementById('psName').value;
+            const mobile = document.getElementById('psMobile').value;
+            const pass = document.getElementById('psPass').value;
+            const loc = document.getElementById('psLocation').value;
+            if(!loc) { alert('Please detect GPS location!'); return; }
+            const coords = loc.split(',');
+
+            let providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            if(providers.find(p => p.mobile === mobile)) { alert('Provider with this mobile already exists!'); return; }
+
+            const newProv = {
+                id: Date.now(),
+                name, mobile, pass,
+                lat: parseFloat(coords[0].trim()),
+                lon: parseFloat(coords[1].trim()),
+                address: "", timing: "", mapLink: "",
+                services: []
+            };
+            providers.push(newProv);
+            localStorage.setItem('locallinkup_providers', JSON.stringify(providers));
+            alert('Registered Successfully! Please Login.');
+            switchProviderTab('login');
+        }
+
+        function handleProviderLogin(e) {
+            e.preventDefault();
+            const mobile = document.getElementById('plLoginMobile').value;
+            const pass = document.getElementById('plLoginPass').value;
+            let providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            const found = providers.find(p => p.mobile === mobile && p.pass === pass);
+            if(found) {
+                loggedInProvider = found;
+                localStorage.setItem('locallinkup_active_provider', JSON.stringify(found));
+                checkProviderSession();
+                alert('Login Successful!');
+            } else { alert('Invalid Mobile or Password!'); }
+        }
+
+        function checkProviderSession() {
+            if(loggedInProvider) {
+                document.getElementById('providerAuthCard').classList.add('hidden');
+                document.getElementById('providerDashboard').classList.remove('hidden');
+                document.getElementById('provDashName').innerText = loggedInProvider.name;
+                
+                if(loggedInProvider.address) {
+                    document.getElementById('shopProfileForm').classList.add('hidden');
+                    document.getElementById('shopProfileViewCard').classList.remove('hidden');
+                    document.getElementById('editProfileBtn').classList.remove('hidden');
+
+                    document.getElementById('viewShopAddress').innerText = loggedInProvider.address;
+                    document.getElementById('viewShopTiming').innerText = loggedInProvider.timing;
+                    const mapA = document.getElementById('viewShopMap');
+                    mapA.href = loggedInProvider.mapLink || '#';
+                    mapA.innerText = loggedInProvider.mapLink || 'No link provided';
+                } else {
+                    document.getElementById('shopProfileForm').classList.remove('hidden');
+                    document.getElementById('shopProfileViewCard').classList.add('hidden');
+                    document.getElementById('editProfileBtn').classList.add('hidden');
+                }
+
+                loadMyServices();
+            } else {
+                document.getElementById('providerAuthCard').classList.remove('hidden');
+                document.getElementById('providerDashboard').classList.add('hidden');
+            }
+        }
+
+        function toggleShopEditMode() {
+            document.getElementById('shopProfileForm').classList.remove('hidden');
+            document.getElementById('shopProfileViewCard').classList.add('hidden');
+            document.getElementById('editProfileBtn').classList.add('hidden');
+
+            document.getElementById('shopAddress').value = loggedInProvider.address || '';
+            document.getElementById('shopTiming').value = loggedInProvider.timing || '';
+            document.getElementById('shopMapLink').value = loggedInProvider.mapLink || '';
+        }
+
+        function providerLogout() {
+            loggedInProvider = null;
+            localStorage.removeItem('locallinkup_active_provider');
+            checkProviderSession();
+        }
+
+        function handleUpdateShopProfile(e) {
+            e.preventDefault();
+            const address = document.getElementById('shopAddress').value;
+            const timing = document.getElementById('shopTiming').value;
+            const mapLink = document.getElementById('shopMapLink').value;
+
+            let providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            let provIndex = providers.findIndex(p => p.id === loggedInProvider.id);
+            if(provIndex !== -1) {
+                providers[provIndex].address = address;
+                providers[provIndex].timing = timing;
+                providers[provIndex].mapLink = mapLink;
+                loggedInProvider = providers[provIndex];
+                localStorage.setItem('locallinkup_providers', JSON.stringify(providers));
+                localStorage.setItem('locallinkup_active_provider', JSON.stringify(loggedInProvider));
+                alert('Shop Profile Saved Successfully!');
+                checkProviderSession();
+            }
+        }
+
+        function handleAddService(e) {
+            e.preventDefault();
+            const title = document.getElementById('sTitle').value;
+            const price = document.getElementById('sPrice').value;
+            const desc = document.getElementById('sDesc').value;
+            const photoInput = document.getElementById('sPhotos');
+
+            let photoFiles = [];
+            let filesLoaded = 0;
+
+            if(photoInput.files.length === 0) {
+                saveServiceToStorage(title, price, desc, []);
+            } else {
+                Array.from(photoInput.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        photoFiles.push(event.target.result);
+                        filesLoaded++;
+                        if(filesLoaded === photoInput.files.length) {
+                            saveServiceToStorage(title, price, desc, photoFiles);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        function saveServiceToStorage(title, price, desc, photos) {
+            let providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            let provIndex = providers.findIndex(p => p.id === loggedInProvider.id);
+            if(provIndex !== -1) {
+                const newService = { id: Date.now(), title, price, desc, photos };
+                providers[provIndex].services.push(newService);
+                loggedInProvider = providers[provIndex];
+                localStorage.setItem('locallinkup_providers', JSON.stringify(providers));
+                localStorage.setItem('locallinkup_active_provider', JSON.stringify(loggedInProvider));
+                alert('Service Published Successfully!');
+                document.getElementById('addServiceForm').reset();
+                loadMyServices();
+            }
+        }
+
+        function loadMyServices() {
+            let providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            let current = providers.find(p => p.id === loggedInProvider.id);
+            const container = document.getElementById('myServicesList');
+            container.innerHTML = '';
+
+            if(!current || current.services.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-sm col-span-full">No services added yet.</p>`;
+                return;
+            }
+
+            current.services.forEach(s => {
+                let photoHtml = '';
+                if(s.photos && s.photos.length > 0) {
+                    photoHtml = `<div class="grid grid-cols-3 gap-1 mt-2">`;
+                    s.photos.forEach(p => { photoHtml += `<img src="${p}" class="h-16 w-full object-cover rounded border">`; });
+                    photoHtml += `</div>`;
+                }
+
+                container.innerHTML += `
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-black text-slate-800 text-sm">${s.title}</h4>
+                            <p class="text-xs text-emerald-600 font-bold">Price: ${s.price}</p>
+                            <p class="text-xs text-slate-500 mt-1">${s.desc}</p>
+                            ${photoHtml}
+                        </div>
+                        <button onclick="deleteMyService(${s.id})" class="mt-3 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition w-full"><i class="fa-solid fa-trash"></i> Delete</button>
+                    </div>
+                `;
+            });
+        }
+
+        function deleteMyService(serviceId) {
+            if(confirm('Delete this service?')) {
+                let providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+                let provIndex = providers.findIndex(p => p.id === loggedInProvider.id);
+                if(provIndex !== -1) {
+                    providers[provIndex].services = providers[provIndex].services.filter(s => s.id !== serviceId);
+                    loggedInProvider = providers[provIndex];
+                    localStorage.setItem('locallinkup_providers', JSON.stringify(providers));
+                    localStorage.setItem('locallinkup_active_provider', JSON.stringify(loggedInProvider));
+                    loadMyServices();
+                }
+            }
+        }
+
+        // Admin Panel
+        function toggleAdminPassword() {
+            const input = document.getElementById('adminPassInput');
+            const icon = document.getElementById('eyeIcon');
+            if(input.type === 'password') {
+                input.type = 'text';
+                icon.className = "fa-solid fa-eye-slash";
+            } else {
+                input.type = 'password';
+                icon.className = "fa-solid fa-eye";
+            }
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('adminPassInput').value;
+            const masterPass = localStorage.getItem('locallinkup_admin_pass');
+            if(pass === masterPass) {
+                document.getElementById('adminLoginCard').classList.add('hidden');
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                loadAdminTable();
+            } else { alert('Incorrect Admin Password!'); }
+        }
+
+        function adminLogout() {
+            document.getElementById('adminLoginCard').classList.remove('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('adminPassInput').value = '';
+        }
+
+        function handleAdminChangePassword(e) {
+            e.preventDefault();
+            const newPass = document.getElementById('newAdminPass').value;
+            localStorage.setItem('locallinkup_admin_pass', newPass);
+            alert('Admin Password Updated Successfully!');
+            document.getElementById('newAdminPass').value = '';
+        }
+
+        function loadAdminTable() {
+            const providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+            const tbody = document.getElementById('adminProvidersTableBody');
+            tbody.innerHTML = '';
+
+            if(providers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No providers registered.</td></tr>`;
+                return;
+            }
+
+            providers.forEach(p => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-bold text-slate-800">${p.name}</td>
+                        <td class="p-4 text-slate-600 font-bold">${p.mobile}</td>
+                        <td class="p-4 text-slate-600 font-mono">${p.pass}</td>
+                        <td class="p-4 text-slate-600 text-xs">${p.address || 'N/A'}<br>${p.timing || 'N/A'}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="adminDeleteProvider(${p.id})" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function adminDeleteProvider(id) {
+            if(confirm('Delete provider and all their services?')) {
+                let providers = JSON.parse(localStorage.getItem('locallinkup_providers')) || [];
+                providers = providers.filter(p => p.id !== id);
+                localStorage.setItem('locallinkup_providers', JSON.stringify(providers));
+                loadAdminTable();
+            }
+        }
+
+        window.onload = function() {
+            detectCustomerGPS();
+        };
+    </script>
+</body>
+</html>
